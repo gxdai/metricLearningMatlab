@@ -1,6 +1,4 @@
-%% Test.m 
-%%%%%%% testScript for shrec14 shape %%%%%%%%%%%%%%
-
+%% Example code %%
 NNpara = './Exp_Result/nn_parameter.mat';
 resultsDir = './Exp_Result/performance.mat';
 net.Struct = [200 100 50 10];
