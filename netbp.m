@@ -43,7 +43,7 @@ function [net, loss] = netbp(fea1, label1, fea2, label2, net, margin, lossType=1
 
     if lossType == 1            % Use the loss function I use
         margin_check = double(margin >= D_x1_x2.^2)            % 1 for L2 norm is within the margin, 0 for the L2 distance has exceeded the margin (ignore for bp)
-        sample_flags = Y + (1-Y)*(-1) .* margin_check           % Only the useful samples (for negative pair, distance is within margin)
+        last_layer_flag = Y + (1-Y)*(-1) .* margin_check           % Only the useful samples (for negative pair, distance is within margin)
         % dz_dx = (Y + (1-Y)*(-1) .* margin_check)
         % Get the loss
         Loss = sum(Y .* D_x1_x2.^2 + (1-Y) .* (margin - D_x1_x2.^2) . * margin_check, 2) / length(Y)
@@ -53,20 +53,24 @@ function [net, loss] = netbp(fea1, label1, fea2, label2, net, margin, lossType=1
         margin_neg   = doulbe(margin - D_x1_x2)             % denotes "h - D(x1, x2)^2"
         epsilon = 1e-5          % A small value for stability, avoiding 0/0
         %sample_flags = Y + (1-Y)*(-1) .* margin_check 
-        sample_flags = (Y + (1-Y)*(-1) .* margin_check .* margin_neg ./ (D_x1_x2 + epsiplon))
+        last_layer_flag = Y + (1-Y)*(-1) .* margin_check .* margin_neg ./ (D_x1_x2 + epsiplon)
         %dz_dx = (Y + (1-Y)*(-1) .* margin_check .* margin_neg ./ (D_x1_x2 + epsiplon))
         % Get the loss
-        Loss = sum(Y .* D_x1_x2.^2 + (1-Y) .* margin_neg .* margin_check, 2) / length(Y)
+        Loss = sum(Y .* D_x1_x2.^2 + (1-Y) .* margin_neg.^2 .* margin_check, 2) / length(Y)
 
-    
+   
+
+
+
 	delS = diff .* deri_activation(net1.ff{end}, typeOfActivation);  %%% sensitivity for source 
 	delT = -diff .* deri_activation(net2.ff{end}, typeOfActivation); %%% sensitivity for target 
 
 	srcLength = length(net1.ff);
 	net.dw = cell(1, srcLength-1);
 	net.db = cell(1, srcLength-1);
-	net.dw{1, end} = (repmat(sample_flags', size(net1.ff{end-1}', 1), 1).*net1.ff{end-1}') * delS + (repmat(sample_flags', size(net2.ff{end-1}', 1), 1).*net2.ff{end-1}') * delT;
-	net.db{1, end} = sample_flags' * delS + sample_flags'* delT;
+	net.dw{1, end} = (repmat(last_layer_flag', size(net1.ff{end-1}', 1), 1).*net1.ff{end-1}') * delS + (repmat(last_layer_flag', size(net2.ff{end-1}', 1), 1).*net2.ff{end-1}') * delT;
+	net.db{1, end} = last_layer_flag' * delS + last_layer_flag'* delT;
+    sample_flags = Y + (1-Y)*(-1) .* margin_check           % Only the useful samples (for negative pair, distance is within margin)
 	for i = srcLength : -1 : 3
     	delS = delS * (net.w{i-1})' .* deri_activation(net1.ff{i-1}, typeOfActivation);
     	delT = delT * (net.w{i-1})' .* deri_activation(net2.ff{i-1}, typeOfActivation);
